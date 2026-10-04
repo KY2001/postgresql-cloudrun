@@ -49,6 +49,6 @@ module "server" {
   # Replication
   gcs_bucket_name = "postgresql-cloudrun-dev"
 
-  # Uptime Check
-  uptime_check_period = "600s"
+  # Sync: every five minutes
+  sync_schedule = "*/5 * * * *"
 }

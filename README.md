@@ -54,7 +54,7 @@ Basically No. On a normal shutdown, Cloud Run sends `SIGTERM` and the server arc
 If the instance crashes, writes since the last archived WAL segment are lost: up to a minute (`archive_timeout`) or since the last `/sync`.
 
 ### Are there cold starts?
-Rarely. The uptime check calls `/sync` every ten minutes, which keeps the instance warm.
+Rarely. A Cloud Scheduler job calls `/sync` every five minutes, which keeps the instance warm.
 
 ### What happens on deploy?
 The new revision takes the database over before it starts serving. It restores the latest full backup and replays the archived WAL as a standby while the old revision still serves. It then calls `POST /stop`, which Cloud Run routes to the old revision; the old revision finishes in-flight queries, archives the remaining WAL and shuts PostgreSQL down. The new revision replays that WAL, is promoted, and starts serving.

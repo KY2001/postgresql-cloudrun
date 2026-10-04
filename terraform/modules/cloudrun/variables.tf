@@ -98,9 +98,9 @@ variable "gcs_bucket_name" {
   type        = string
 }
 
-# --- Uptime Check ---
+# --- Sync ---
 
-variable "uptime_check_period" {
-  description = "How often the uptime check calls /sync (60s, 300s, 600s or 900s)"
+variable "sync_schedule" {
+  description = "Cron schedule (UTC) on which Cloud Scheduler calls /sync"
   type        = string
 }
