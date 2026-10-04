@@ -1,0 +1,16 @@
+name: lint
+on:
+  push:
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          cache: false
+      - uses: terraform-linters/setup-tflint@v6
+      - run: tflint --chdir=terraform/ --init
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - run: make lint

@@ -1,0 +1,6 @@
+target
+data
+credentials
+.git
+.env*
+__pycache__/

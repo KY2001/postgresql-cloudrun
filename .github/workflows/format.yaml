@@ -1,0 +1,15 @@
+name: format
+on:
+  push:
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          cache: false
+      - uses: hashicorp/setup-terraform@v4
+      - run: make format
+      - name: Check for diffs
+        run: git diff --exit-code

@@ -1,0 +1,163 @@
+openapi: 3.1.0
+info:
+  title: SQL over HTTP
+  version: 0.1.0
+  description: Executes raw SQL against a PostgreSQL database backed up to GCS with pgBackRest.
+paths:
+  /health:
+    get:
+      operationId: health
+      summary: Check the database and WAL archiving
+      responses:
+        "204":
+          description: The database is responsive and WAL archiving works
+        "503":
+          description: The database or WAL archiving is unavailable
+  /sql:
+    post:
+      operationId: executeSql
+      description: |
+        Executes the statements in order and returns one result per statement. Two or more
+        statements run in a single transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              items:
+                $ref: "#/components/schemas/Statement"
+            example:
+              - sql: INSERT INTO users (id, name) VALUES ($1, $2)
+                params: [1, alice]
+              - sql: SELECT id, name FROM users WHERE id = $1
+                params: [1]
+      responses:
+        "200":
+          description: Statements executed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Result"
+              example:
+                - columns: []
+                  types: []
+                  rows: []
+                  changes: 1
+                - columns: [id, name]
+                  types: [int4, text]
+                  rows: [[1, alice]]
+                  changes: 1
+        "400":
+          description: SQL error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: No database connection available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /sync:
+    post:
+      operationId: syncReplica
+      summary: Archive WAL to GCS, and take a full backup once an hour
+      responses:
+        "204":
+          description: All changes are archived
+        "500":
+          description: Archiving or backup failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: The database was handed off to a new revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /stop:
+    post:
+      operationId: stop
+      description: Hands the database off to a new revision.
+      parameters:
+        - name: revision
+          in: query
+          required: true
+          description: The caller's revision. An instance doesn't stop on behalf of its own revision.
+          schema:
+            type: string
+      responses:
+        "204":
+          description: The database was handed off
+        "409":
+          description: The caller is this revision, so nothing was stopped
+        "500":
+          description: Archiving failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    Statement:
+      type: object
+      required: [sql]
+      properties:
+        sql:
+          type: string
+          description: A single SQL statement with `$1`, `$2`, ... placeholders.
+        params:
+          type: array
+          description: |
+            Values bound to the placeholders in order. They are sent as text and PostgreSQL converts
+            them to the placeholder's type; arrays and objects are sent as JSON.
+          items:
+            description: A JSON value.
+    Result:
+      type: object
+      required: [columns, types, rows, changes]
+      properties:
+        columns:
+          type: array
+          items:
+            type: string
+        types:
+          type: array
+          description: PostgreSQL type of each column (e.g. `int4`, `timestamptz`)
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              description: |
+                A JSON value. Booleans, integers and finite floats are JSON booleans and numbers
+                (NaN and infinities are the strings `NaN`, `Infinity` and `-Infinity`), json and
+                jsonb are JSON, bytea is a lowercase hex string, and other types (including numeric)
+                are strings. Arrays and other unsupported types must be cast to text.
+        changes:
+          type: integer
+          format: int64
+          description: Row count of the command, e.g. rows inserted, updated, deleted or selected.
+    ErrorResponse:
+      type: object
+      required: [statusCode, message]
+      properties:
+        statusCode:
+          type: integer
+          description: HTTP status code.
+        message:
+          type: string
+          description: Human-readable error message.
+        code:
+          type: string
+          description: |
+            PostgreSQL SQLSTATE, when the error comes from PostgreSQL (e.g. 23505 for unique_violation, 23503 for foreign_key_violation).
