@@ -201,8 +201,14 @@ impl<'a> FromSql<'a> for Json {
             Type::INT4 => i32::from_sql(ty, raw)?.into(),
             Type::INT8 => i64::from_sql(ty, raw)?.into(),
             Type::OID => u32::from_sql(ty, raw)?.into(),
-            Type::FLOAT4 => f32::from_sql(ty, raw)?.into(),
-            Type::FLOAT8 => f64::from_sql(ty, raw)?.into(),
+            Type::FLOAT4 => match f32::from_sql(ty, raw)? {
+                f if f.is_finite() => f.into(),
+                f => non_finite(f.into()),
+            },
+            Type::FLOAT8 => match f64::from_sql(ty, raw)? {
+                f if f.is_finite() => f.into(),
+                f => non_finite(f),
+            },
             Type::NUMERIC => numeric(raw).into(),
             Type::JSON | Type::JSONB => Value::from_sql(ty, raw)?,
             // Lowercase hex, like SQLite's hex().
@@ -232,6 +238,17 @@ impl<'a> FromSql<'a> for Json {
     fn accepts(_: &Type) -> bool {
         true
     }
+}
+
+// JSON has no NaN or infinities (serde_json would turn them into null), so they're returned in
+// PostgreSQL's text form, like NUMERIC's.
+fn non_finite(f: f64) -> Value {
+    match f {
+        f if f.is_nan() => "NaN",
+        f if f > 0.0 => "Infinity",
+        _ => "-Infinity",
+    }
+    .into()
 }
 
 // NUMERIC is sent as base-10000 digits with a weight (the power of the first digit), a sign and a
@@ -299,6 +316,21 @@ mod tests {
         ] {
             assert!(!is_transaction_control(sql), "{sql}");
         }
+    }
+
+    #[test]
+    fn non_finite_floats() {
+        let json = |ty: &Type, raw: &[u8]| serde_json::to_value(Json::from_sql(ty, raw).unwrap().0);
+        assert_eq!(json(&Type::FLOAT8, &f64::NAN.to_be_bytes()).unwrap(), "NaN");
+        assert_eq!(
+            json(&Type::FLOAT8, &f64::INFINITY.to_be_bytes()).unwrap(),
+            "Infinity"
+        );
+        assert_eq!(
+            json(&Type::FLOAT4, &f32::NEG_INFINITY.to_be_bytes()).unwrap(),
+            "-Infinity"
+        );
+        assert_eq!(json(&Type::FLOAT8, &1.5f64.to_be_bytes()).unwrap(), 1.5);
     }
 
     #[test]

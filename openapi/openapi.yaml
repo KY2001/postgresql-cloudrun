@@ -139,7 +139,8 @@ components:
             type: array
             items:
               description: |
-                A JSON value. Booleans, integers and floats are JSON booleans and numbers, json and
+                A JSON value. Booleans, integers and finite floats are JSON booleans and numbers
+                (NaN and infinities are the strings `NaN`, `Infinity` and `-Infinity`), json and
                 jsonb are JSON, bytea is a lowercase hex string, and other types (including numeric)
                 are strings. Arrays and other unsupported types must be cast to text.
         changes:

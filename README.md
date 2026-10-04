@@ -35,7 +35,7 @@ See [openapi/openapi.yaml](openapi/openapi.yaml) for the full API.
 ### How are parameters and results typed?
 Parameters are sent as text, and PostgreSQL converts them to the placeholder's type (arrays and objects are sent as JSON).
 An untyped placeholder such as `SELECT $1` is `text`; cast it (`$1::int`) to get another type.
-In results, booleans, integers and floats are JSON values, `json`/`jsonb` is JSON, `bytea` is a hex string, and the rest (including `numeric`) are strings. Cast arrays and other unsupported types to `text`.
+In results, booleans, integers and finite floats are JSON values (NaN and infinities are the strings `NaN`, `Infinity` and `-Infinity`), `json`/`jsonb` is JSON, `bytea` is a hex string, and the rest (including `numeric`) are strings. Cast arrays and other unsupported types to `text`.
 
 ### How are transactions handled?
 A request with one statement runs in autocommit mode.
