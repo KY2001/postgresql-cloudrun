@@ -49,6 +49,6 @@ module "server" {
   # Replication
   gcs_bucket_name = "postgresql-cloudrun-dev"
 
-  # Sync: every five minutes
-  sync_schedule = "*/5 * * * *"
+  # Sync: every minute, which bounds the writes a crash can lose
+  sync_schedule = "* * * * *"
 }

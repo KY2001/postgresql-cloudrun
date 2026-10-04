@@ -51,10 +51,10 @@ Yes. The service runs on a single instance (`--max-instances=1`), so every reque
 
 ### Can I lose data?
 Basically No. On a normal shutdown, Cloud Run sends `SIGTERM` and the server archives the remaining WAL to GCS before exiting.
-If the instance crashes, writes since the last archived WAL segment are lost: up to a minute (`archive_timeout`) or since the last `/sync`.
+If the instance crashes, writes since the last archived WAL segment are lost. With request-based billing PostgreSQL gets CPU only while requests run, so `archive_timeout` alone can't be relied on; a Cloud Scheduler job calls `/sync` every minute, which bounds the loss to about a minute. Call `/sync` after a write to make it durable right away.
 
 ### Are there cold starts?
-Rarely. A Cloud Scheduler job calls `/sync` every five minutes, which keeps the instance warm.
+Rarely. A Cloud Scheduler job calls `/sync` every minute, which keeps the instance warm.
 
 ### What happens on deploy?
 The new revision takes the database over before it starts serving. It restores the latest full backup and replays the archived WAL as a standby while the old revision still serves. It then calls `POST /stop`, which Cloud Run routes to the old revision; the old revision finishes in-flight queries, archives the remaining WAL and shuts PostgreSQL down. The new revision replays that WAL, is promoted, and starts serving.
