@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "recreateWhen": "always",
+  "rebaseWhen": "behind-base-branch",
+  "ignorePaths": ["openapi/Cargo.toml"],
+  "packageRules": [
+    {
+      "matchManagers": ["cargo"],
+      "rangeStrategy": "bump",
+      "groupName": "cargo"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "dockerfile"
+    },
+    {
+      "matchManagers": ["terraform"],
+      "groupName": "terraform"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "labels": ["UPDATE-MAJOR"]
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true
+  }
+}

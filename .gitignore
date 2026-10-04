@@ -1,0 +1,10 @@
+/target
+/data
+.env*
+credentials
+AGENTS.md
+__pycache__/
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/.terraform.lock.hcl
